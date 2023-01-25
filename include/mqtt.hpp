@@ -35,7 +35,7 @@ class Mqtt {
                                true, "off")) {
         Serial.println("connected");
 
-        this->client.publish(this->topicWill.c_str(), "on");
+        this->client.publish(this->topicWill.c_str(), "on", true);
 
         client.subscribe(topicMode.c_str());
         client.subscribe(topicBrightness.c_str());
