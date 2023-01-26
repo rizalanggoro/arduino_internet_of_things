@@ -25,6 +25,7 @@ class Mqtt {
     this->topicAuto = prefix + "/auto";
     this->topicAutoDelay = prefix + "/auto_delay";
     this->topicAutoValues = prefix + "/auto_values";
+    this->topicSave = prefix + "/save";
   }
 
   void notifyOnline() {
@@ -63,6 +64,7 @@ class Mqtt {
         client.subscribe(topicAuto.c_str());
         client.subscribe(topicAutoDelay.c_str());
         client.subscribe(topicAutoValues.c_str());
+        client.subscribe(topicSave.c_str());
       } else {
 #ifdef DEBUG
         Serial.print("failed, rc=");
@@ -84,6 +86,7 @@ class Mqtt {
   String topicAuto;
   String topicAutoDelay;
   String topicAutoValues;
+  String topicSave;
 
   void open(std::function<void(char *topic, byte *payload, unsigned int length)>
                 callback) {

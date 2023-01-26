@@ -5,20 +5,25 @@
 #include <WS2812FX.h>
 
 #include "config.hpp"
+// #include "iot_file.hpp"
 #include "mqtt.hpp"
 
 class Parser {
  private:
   Mqtt *mqtt;
   WS2812FX *fx;
+  // IotFile *iotFile;
 
-  int singleMode = 0;
-
+  int *deviceMode;
+  int *deviceBrightness;
+  int *deviceSpeed;
+  int *deviceColor;
+  int *deviceAutoEnable;
+  int *deviceAutoDelay;
   DynamicJsonDocument *docAutoValues;
-  String autoValuesStr = "";
-  unsigned long autoDelay = 1024;
+  String *deviceAutoValuesStr;
+
   unsigned long autoPreviousMillis = 0;
-  int isAutoEnable = 0;
   int autoValueIndex = 0;
 
   void enableAuto() {
@@ -28,7 +33,7 @@ class Parser {
 
     this->autoPreviousMillis = 0;
     this->autoValueIndex = 0;
-    this->isAutoEnable = 1;
+    *this->deviceAutoEnable = 1;
   }
 
   void disableAuto() {
@@ -36,21 +41,35 @@ class Parser {
     Serial.println("disable auto called");
 #endif
 
-    this->fx->setMode(this->singleMode);
-    this->isAutoEnable = 0;
+    this->fx->setMode(*this->deviceMode);
+    *this->deviceAutoEnable = 0;
   }
 
  public:
-  void begin(Mqtt *mqtt, WS2812FX *fx, DynamicJsonDocument *docAutoValues) {
+  void setConfig(int *deviceMode, int *deviceBrightness, int *deviceSpeed,
+                 int *deviceColor, int *deviceAutoEnable, int *deviceAutoDelay,
+                 DynamicJsonDocument *docAutoValues,
+                 String *deviceAutoValuesStr) {
+    this->deviceMode = deviceMode;
+    this->deviceBrightness = deviceBrightness;
+    this->deviceSpeed = deviceSpeed;
+    this->deviceColor = deviceColor;
+    this->deviceAutoEnable = deviceAutoEnable;
+    this->deviceAutoDelay = deviceAutoDelay;
+    this->docAutoValues = docAutoValues;
+    this->deviceAutoValuesStr = deviceAutoValuesStr;
+  }
+
+  void begin(Mqtt *mqtt, WS2812FX *fx) {
     this->mqtt = mqtt;
     this->fx = fx;
-    this->docAutoValues = docAutoValues;
+    // this->iotFile = iotFile;
   }
 
   void stream() {
-    if (this->isAutoEnable == 1) {
+    if (*this->deviceAutoEnable == 1) {
       unsigned long currentMillis = millis();
-      if (currentMillis - this->autoPreviousMillis >= this->autoDelay) {
+      if (currentMillis - this->autoPreviousMillis >= *this->deviceAutoDelay) {
         this->autoPreviousMillis = currentMillis;
 
         if ((*this->docAutoValues).containsKey("n")) {
@@ -96,12 +115,17 @@ class Parser {
   }
 
   void parse(String topic, String data) {
+    // todo: save config
+    // if (topic == this->mqtt->topicSave) {
+    //   this->iotFile->saveConfig();
+    // }
+
     // todo: auto mode
     if (topic == this->mqtt->topicAuto) {
       int enable = data.toInt();
-      if (this->isAutoEnable != enable) {
-        this->isAutoEnable = enable;
-        if (this->isAutoEnable)
+      if (*this->deviceAutoEnable != enable) {
+        *this->deviceAutoEnable = enable;
+        if (*this->deviceAutoEnable == 1)
           this->enableAuto();
         else
           this->disableAuto();
@@ -110,40 +134,47 @@ class Parser {
 
     // todo: auto values
     if (topic == this->mqtt->topicAutoValues) {
-      if (this->autoValuesStr != data) {
-        this->autoValuesStr = data;
-        deserializeJson(*this->docAutoValues, this->autoValuesStr);
+      if (*this->deviceAutoValuesStr != data) {
+        *this->deviceAutoValuesStr = data;
+        deserializeJson(*this->docAutoValues, *this->deviceAutoValuesStr);
 
-        if (this->isAutoEnable == 1) this->enableAuto();
+        if (*this->deviceAutoEnable == 1) this->enableAuto();
       }
     }
 
     // todo: auto delay
     if (topic == this->mqtt->topicAutoDelay) {
-      unsigned long delay = atol(data.c_str());
-      if (this->autoDelay != delay) this->autoDelay = delay;
+      int delay = data.toInt();
+      if (*this->deviceAutoDelay != delay) {
+        *this->deviceAutoDelay = delay;
+      }
     }
 
     // todo: mode
     if (topic == this->mqtt->topicMode) {
       int mode = data.toInt();
-      if (this->fx->getMode() != mode) {
+      if (*this->deviceMode != mode) {
         this->fx->setMode(mode);
-        this->singleMode = mode;
+        *this->deviceMode = mode;
       }
     }
 
     // todo: brightness
     if (topic == this->mqtt->topicBrightness) {
       int brightness = data.toInt();
-      if (this->fx->getBrightness() != brightness)
+      if (*this->deviceBrightness != brightness) {
         this->fx->setBrightness(brightness);
+        *this->deviceBrightness = brightness;
+      }
     }
 
     // todo: speed
     if (topic == this->mqtt->topicSpeed) {
       int speed = data.toInt();
-      if (this->fx->getSpeed() != speed) this->fx->setSpeed(speed);
+      if (*this->deviceSpeed != speed) {
+        this->fx->setSpeed(speed);
+        *this->deviceSpeed = speed;
+      }
     }
 
     // todo: color
@@ -157,7 +188,11 @@ class Parser {
       String gStr = data.substring(a0 + 1, a1);
       String bStr = data.substring(a1 + 1, a2);
 
-      this->fx->setColor(rStr.toInt(), gStr.toInt(), bStr.toInt());
+      int color = WS2812FX::Color(rStr.toInt(), gStr.toInt(), bStr.toInt());
+      if (*this->deviceColor != color) {
+        this->fx->setColor(color);
+        *this->deviceColor = color;
+      }
     }
   }
 };

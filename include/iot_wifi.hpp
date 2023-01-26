@@ -25,12 +25,27 @@ class IotWifi {
           Serial.print(".");
       }
     }
+
+    this->streamLiveConnection();
   }
 
   bool isConnected() { return this->connected; }
 
  private:
   unsigned long previousMillis = 0;
+  unsigned long previousMillisLive = 0;
   unsigned long delay = 500;
   bool connected = false;
+
+  void streamLiveConnection() {
+#ifdef DEBUG
+    unsigned long currentMillis = millis();
+    if (currentMillis - this->previousMillisLive >= 2000) {
+      this->previousMillisLive = currentMillis;
+
+      Serial.print("Live wifi connection -> ");
+      Serial.println(WiFi.status() == WL_CONNECTED ? "ok" : "err");
+    }
+#endif
+  }
 };
