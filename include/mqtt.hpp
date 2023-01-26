@@ -23,8 +23,8 @@ class Mqtt {
     this->topicSpeed = prefix + "/speed";
     this->topicColor = prefix + "/color";
     this->topicAuto = prefix + "/auto";
-    this->topicAutoDelay = prefix + "/auto-delay";
-    this->topicAutoValues = prefix + "/auto-values";
+    this->topicAutoDelay = prefix + "/auto_delay";
+    this->topicAutoValues = prefix + "/auto_values";
   }
 
   void notifyOnline() {
@@ -38,17 +38,23 @@ class Mqtt {
 
   void reconnect() {
     while (!this->client.connected()) {
+#ifdef DEBUG
       Serial.println("Attempting MQTT connection...");
+#endif
 
       String clientId = String(COMPANY) + "-" + String(DEVICE_ID) + "-" +
                         String(random(0xffff), HEX);
 
+#ifdef DEBUG
       Serial.print("Client id -> ");
       Serial.println(clientId);
+#endif
 
       if (this->client.connect(clientId.c_str(), this->topicWill.c_str(), 2,
                                true, "off")) {
+#ifdef DEBUG
         Serial.println("connected");
+#endif
 
         client.subscribe(topicMode.c_str());
         client.subscribe(topicBrightness.c_str());
@@ -58,9 +64,12 @@ class Mqtt {
         client.subscribe(topicAutoDelay.c_str());
         client.subscribe(topicAutoValues.c_str());
       } else {
+#ifdef DEBUG
         Serial.print("failed, rc=");
         Serial.print(client.state());
         Serial.println(" try again in 5 seconds");
+#endif
+
         delay(5000);
       }
     }
