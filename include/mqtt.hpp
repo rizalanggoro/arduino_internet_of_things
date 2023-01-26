@@ -11,6 +11,9 @@ class Mqtt {
   WiFiClient espClient;
   PubSubClient client{espClient};
 
+  unsigned long notifyOnlineDelay = 3000;
+  unsigned long notifyOnlinePreviousMillis = 0;
+
   void initializeTopics() {
     String prefix = String(COMPANY) + "-" + String(DEVICE_ID);
 
@@ -19,6 +22,18 @@ class Mqtt {
     this->topicBrightness = prefix + "/brightness";
     this->topicSpeed = prefix + "/speed";
     this->topicColor = prefix + "/color";
+    this->topicAuto = prefix + "/auto";
+    this->topicAutoDelay = prefix + "/auto-delay";
+    this->topicAutoValues = prefix + "/auto-values";
+  }
+
+  void notifyOnline() {
+    unsigned long currentMillis = millis();
+    if (currentMillis - this->notifyOnlinePreviousMillis >=
+        this->notifyOnlineDelay) {
+      this->notifyOnlinePreviousMillis = currentMillis;
+      this->client.publish(this->topicWill.c_str(), "on", true);
+    }
   }
 
   void reconnect() {
@@ -35,12 +50,13 @@ class Mqtt {
                                true, "off")) {
         Serial.println("connected");
 
-        this->client.publish(this->topicWill.c_str(), "on", true);
-
         client.subscribe(topicMode.c_str());
         client.subscribe(topicBrightness.c_str());
         client.subscribe(topicSpeed.c_str());
         client.subscribe(topicColor.c_str());
+        client.subscribe(topicAuto.c_str());
+        client.subscribe(topicAutoDelay.c_str());
+        client.subscribe(topicAutoValues.c_str());
       } else {
         Serial.print("failed, rc=");
         Serial.print(client.state());
@@ -56,6 +72,9 @@ class Mqtt {
   String topicBrightness;
   String topicSpeed;
   String topicColor;
+  String topicAuto;
+  String topicAutoDelay;
+  String topicAutoValues;
 
   void open(std::function<void(char *topic, byte *payload, unsigned int length)>
                 callback) {
@@ -69,8 +88,10 @@ class Mqtt {
     if (!this->client.connected()) {
       digitalWrite(LED_BUILTIN, HIGH);
       this->reconnect();
-    } else
+    } else {
       digitalWrite(LED_BUILTIN, LOW);
+      this->notifyOnline();
+    }
 
     this->client.loop();
   }
